@@ -38,13 +38,13 @@ private val noPhoto = PhotoModel()
 @HiltViewModel
 class PostViewModel @Inject constructor(
     private val repository: PostRepository,
-    auth: AppAuth,
+    private val auth: AppAuth,
 ) : ViewModel() {
     private val cached = repository
         .data
         .cachedIn(viewModelScope)
 
-    val data : Flow<PagingData<Post>> = auth.authStateFlow
+    val data: Flow<PagingData<Post>> = auth.authStateFlow
         .flatMapLatest { (myId, _) ->
             cached.map { pagingData ->
                 pagingData.map { post ->
@@ -91,11 +91,13 @@ class PostViewModel @Inject constructor(
     }
 
     fun save() {
+
         edited.value?.let {
             viewModelScope.launch {
                 try {
                     repository.save(
-                        it, _photo.value?.uri?.let { MediaUpload(it.toFile()) }
+                        it.copy(authorId = auth.authStateFlow.value.id),
+                        _photo.value?.uri?.let { MediaUpload(it.toFile()) }
                     )
 
                     _postCreated.value = Unit
@@ -129,6 +131,8 @@ class PostViewModel @Inject constructor(
     }
 
     fun removeById(id: Long) {
-        TODO()
+        viewModelScope.launch {
+            repository.removeById(id)
+        }
     }
 }
